@@ -7,9 +7,9 @@ import random
 from generique import *
 
 # Constantes du jeu
-NB_Life: int = 1
+NB_Life: int = 3
 BG_COLOR: Color = Define_Color.BLACK.value
-BLOCK_SIZE = 20
+BLOCK_SIZE = 30
 points: dict = {"Wall": 0, "Path": 1, "Candy": 10, "Ghost": 100}
 list_gost_color: list = [Define_Color.RED.value,
                          Define_Color.BLUE.value,
@@ -362,6 +362,34 @@ class Game(tk.Tk):
 
         self.mainloop()
 
+    def write_score(self) -> None:
+        """
+        Ecrit le score dans le fichier
+        :return:
+        """
+        if not os.path.exists(Name_Scoreboad_file):
+            print("Création du fichier")
+            with open(Name_Scoreboad_file, "w") as file:
+                file.write("{}")
+                file.close()
+
+        date: str = time.strftime("%d/%m/%Y_%H:%M:%S")
+
+        with open(Name_Scoreboad_file, "r") as file:
+            data = json.load(file)
+            file.close()
+
+        if data.get(User_Name) is None:
+            data[User_Name] = {"best_score": {"date": date, "score": self.score_value}}
+        else:
+            if data[User_Name]["best_score"]["score"] < self.score_value:
+                data[User_Name]["best_score"] = {"date": date, "score": self.score_value}
+        data[User_Name][date] = self.score_value
+
+        with open(Name_Scoreboad_file, "w") as file:
+            json.dump(data, file, indent=4)
+            file.close()
+
     def draw_board(self) -> None:
         """
         Dessine le plateau de jeu
@@ -537,21 +565,7 @@ class Game(tk.Tk):
                 font=("Arial", 32),
                 fill=get_name_color(Define_Color.RED.value)
             )
-            if not os.path.exists(Name_Scoreboad_file):
-                with open(Name_Scoreboad_file, "w") as file:
-                    file.write("{}")
-                    file.close()
-            date: str = time.strftime("%d/%m/%Y_%H:%M:%S")
-            with open(Name_Scoreboad_file, "w") as file:
-                data = json.load(file)
-                if data.get(User_Name) is None:
-                    data[User_Name] = {"best_score": {date: self.score_value}}
-                else:
-                    if data[User_Name]["best_score"] < self.score_value:
-                        data[User_Name]["best_score"] = self.score_value
-                data[User_Name][date] = self.score_value
-                json.dump(data, file)
-                file.close()
+            self.write_score()
             self.active_auto_draw = False
             self.life_value = 0
             self.score_value = 0
@@ -598,6 +612,21 @@ class Game(tk.Tk):
         while self.life_value > 0:
             self.draw()
 
+    def init_value(self) -> None:
+        """
+        Initialise les valeurs
+        :return:
+        """
+        self.life_value = NB_Life
+        self.score_value = 0
+        self.life.config(text=f"Life: {self.life_value}")
+        self.score.config(text=f"Score: {self.score_value}")
+        self.active_auto_draw = False
+        self.board.reload_board()
+        self.Pacman_Run = self.board.pacman
+        self.Ghosts_Run = self.board.ghosts
+        self.draw()
+
     def on_key_press(self, e: tk.Event) -> None:
         """
         Gère les événements clavier
@@ -619,41 +648,14 @@ class Game(tk.Tk):
                 self.life_value = 0
                 self.active_auto_draw = False
 
-                if not os.path.exists(Name_Scoreboad_file):
-                    print("Création du fichier")
-                    with open(Name_Scoreboad_file, "w") as file:
-                        file.write("{}")
-                        file.close()
-
-                date: str = time.strftime("%d/%m/%Y_%H:%M:%S")
-
-                with open(Name_Scoreboad_file, "r") as file:
-                    data = json.load(file)
-                    file.close()
-
-                if data.get(User_Name) is None:
-                    data[User_Name] = {"best_score": {date: self.score_value}}
-                else:
-                    if data[User_Name]["best_score"] < self.score_value:
-                        data[User_Name]["best_score"] = self.score_value
-                data[User_Name][date] = self.score_value
-
-                with open(Name_Scoreboad_file, "w") as file:
-                    json.dump(data, file)
-                    file.close()
+                self.write_score()
 
                 self.score_value = 0
                 self.life.config(text=f"Life : {self.life_value}")
                 self.score.config(text=f"Score : {self.score_value}")
                 self.thread_run = None
             else:
-                self.life_value = NB_Life
-                self.score_value = 0
-                self.active_auto_draw = False
-                self.board.reload_board()
-                self.Pacman_Run = self.board.pacman
-                self.Ghosts_Run = self.board.ghosts
-                self.draw()
+                self.init_value()
                 self.thread_run = th.Thread(target=self.run)
                 self.thread_run.start()
                 self.thread_draw = th.Thread(target=self.auto_draw)
@@ -685,11 +687,17 @@ class GetUserNameBox(tk.Tk):
         self.entry.focus_set()
         self.entry.insert(0, User_Name)
 
+        self.entry_life = tk.Entry(self)
+        self.entry_life.pack(padx=10, pady=10)
+        self.entry_life.insert(0, str(NB_Life))
+
         self.label_error = tk.Label(self, text="")
         self.label_error.pack(padx=10, pady=5)
 
         self.button: tk.Button = tk.Button(self, text="OK", command=self.validate)
         self.button.pack(padx=10, pady=10)
+
+        self.bind("<Key>", self.on_key_press)
 
         self.mainloop()
 
@@ -699,14 +707,31 @@ class GetUserNameBox(tk.Tk):
         :return:
         """
         global User_Name
+        global NB_Life
         name = self.entry.get()
+        life = self.entry_life.get()
         if name == "":
             self.label_error.config(text="Le nom ne peut pas être vide")
             self.label_error.update()
             User_Name = "User"
+            self.entry.insert(0, User_Name)
+        elif not life.isdigit():
+            self.label_error.config(text="Le nombre de vie doit être un nombre")
+            self.label_error.update()
+            NB_Life = 3
+            self.entry_life.insert(0, str(NB_Life))
         else:
             User_Name = name
+            NB_Life = int(life)
             self.destroy()
+
+    def on_key_press(self, e: tk.Event) -> None:
+        """
+        Method to close the window with the escape key
+        :param e: event
+        """
+        if e.keysym == "Return":
+            self.validate()
 
 
 def main():
