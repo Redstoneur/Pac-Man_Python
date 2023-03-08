@@ -390,6 +390,16 @@ class Game(tk.Tk):
             json.dump(data, file, indent=4)
             file.close()
 
+    def update_affichage_score_life(self) -> None:
+        """
+        Met à jour l'affichage du score et des points de vie
+        :return:
+        """
+        self.life.config(text=f"Life: {self.life_value}")
+        self.update()
+        self.score.config(text=f"Score: {self.score_value}")
+        self.update()
+
     def draw_board(self) -> None:
         """
         Dessine le plateau de jeu
@@ -473,10 +483,7 @@ class Game(tk.Tk):
         self.draw_board()
         self.draw_pacman()
         self.draw_ghosts()
-        self.life.config(text=f"Life : {self.life_value}")
-        self.life.update()
-        self.score.config(text=f"Score : {self.score_value}")
-        self.score.update()
+        self.update_affichage_score_life()
 
     def move_pacman(self):
         """
@@ -569,8 +576,7 @@ class Game(tk.Tk):
             self.active_auto_draw = False
             self.life_value = 0
             self.score_value = 0
-            self.life.config(text=f"Life : {self.life_value}")
-            self.score.config(text=f"Score : {self.score_value}")
+            self.update_affichage_score_life()
             self.thread_run = None
 
     def move(self):
@@ -619,8 +625,7 @@ class Game(tk.Tk):
         """
         self.life_value = NB_Life
         self.score_value = 0
-        self.life.config(text=f"Life: {self.life_value}")
-        self.score.config(text=f"Score: {self.score_value}")
+        self.update_affichage_score_life()
         self.active_auto_draw = False
         self.board.reload_board()
         self.Pacman_Run = self.board.pacman
@@ -651,8 +656,7 @@ class Game(tk.Tk):
                 self.write_score()
 
                 self.score_value = 0
-                self.life.config(text=f"Life : {self.life_value}")
-                self.score.config(text=f"Score : {self.score_value}")
+                self.update_affichage_score_life()
                 self.thread_run = None
             else:
                 self.init_value()
@@ -666,18 +670,17 @@ class Game(tk.Tk):
 
 class GetUserNameBox(tk.Tk):
     """
-    Class MessageBox
-    Description: Class to create a message box
+    Class GetUserNameBox
+    Description: Fenêtre pour récupérer le nom de l'utilisateur et le nombre de vie
     """
 
     def __init__(self):
         """
-        Constructor of the class MessageBox
-        :param message: message to display
+        Constructor of the class
         """
         super().__init__()
         self.title("Erreur")
-        self.geometry("300x150")
+        self.geometry("300x200")
 
         self.label: tk.Label = tk.Label(self, text="Entrez votre nom")
         self.label.pack(padx=10, pady=5)
